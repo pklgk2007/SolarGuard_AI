@@ -540,9 +540,5 @@ elif page == "About Model":
         - Sunrise and sunset
         - Solar angle features
 
-        ### Model File
-        The trained model should be saved as:
-
-        `solar_model.pkl`
-        """
+        
     )
