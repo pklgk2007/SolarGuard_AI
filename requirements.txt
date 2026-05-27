@@ -1,0 +1,9 @@
+streamlit
+streamlit-js-eval
+requests
+pandas
+numpy
+scikit-learn
+lightgbm
+joblib
+plotly
