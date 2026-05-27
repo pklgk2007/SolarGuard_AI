@@ -2,82 +2,130 @@ import pandas as pd
 import numpy as np
 import joblib
 
-from sklearn.ensemble import ExtraTreesRegressor, VotingRegressor
 from lightgbm import LGBMRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
+
+train = pd.read_csv("train_df_1.csv")
+
+train = train.dropna(subset=["Radiation"])
+
 
 def create_features(df):
     df = df.copy()
 
-    dt = pd.to_datetime(df["Data"] + " " + df["Time"], format="%d-%m-%Y %H:%M:%S")
-    sunrise = pd.to_datetime(df["Data"] + " " + df["TimeSunRise"], format="%d-%m-%Y %H:%M:%S")
-    sunset = pd.to_datetime(df["Data"] + " " + df["TimeSunSet"], format="%d-%m-%Y %H:%M:%S")
+    dt = pd.to_datetime(
+        df["Data"] + " " + df["Time"],
+        format="%d-%m-%Y %H:%M:%S"
+    )
+
+    sunrise = pd.to_datetime(
+        df["Data"] + " " + df["TimeSunRise"],
+        format="%d-%m-%Y %H:%M:%S"
+    )
+
+    sunset = pd.to_datetime(
+        df["Data"] + " " + df["TimeSunSet"],
+        format="%d-%m-%Y %H:%M:%S"
+    )
 
     df["hour"] = dt.dt.hour + dt.dt.minute / 60
-    df["minute_of_day"] = dt.dt.hour * 60 + dt.dt.minute
     df["day"] = dt.dt.day
     df["month"] = dt.dt.month
     df["dayofyear"] = dt.dt.dayofyear
-    df["weekday"] = dt.dt.weekday
 
     df["sunrise_min"] = sunrise.dt.hour * 60 + sunrise.dt.minute
     df["sunset_min"] = sunset.dt.hour * 60 + sunset.dt.minute
-    df["day_length"] = df["sunset_min"] - df["sunrise_min"]
-    df["time_from_sunrise"] = df["minute_of_day"] - df["sunrise_min"]
-    df["time_to_sunset"] = df["sunset_min"] - df["minute_of_day"]
 
-    df["solar_progress"] = df["time_from_sunrise"] / df["day_length"]
-    df["solar_angle"] = np.sin(np.pi * df["solar_progress"]).clip(0, None)
+    df["minute_of_day"] = dt.dt.hour * 60 + dt.dt.minute
+
+    df["day_length"] = df["sunset_min"] - df["sunrise_min"]
+
+    df["solar_progress"] = (
+        (df["minute_of_day"] - df["sunrise_min"])
+        / df["day_length"]
+    )
+
+    df["solar_angle"] = np.sin(np.pi * df["solar_progress"])
+    df["solar_angle"] = df["solar_angle"].clip(0, None)
 
     df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
     df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
-    df["day_sin"] = np.sin(2 * np.pi * df["dayofyear"] / 365)
-    df["day_cos"] = np.cos(2 * np.pi * df["dayofyear"] / 365)
 
-    df["wind_sin"] = np.sin(np.deg2rad(df["WindDirection(Degrees)"]))
-    df["wind_cos"] = np.cos(np.deg2rad(df["WindDirection(Degrees)"]))
+    df["wind_sin"] = np.sin(
+        np.deg2rad(df["WindDirection(Degrees)"])
+    )
 
-    df["temp_humidity"] = df["Temperature"] * df["Humidity"]
-    df["temp_pressure"] = df["Temperature"] * df["Pressure"]
-    df["solar_temp"] = df["solar_angle"] * df["Temperature"]
-    df["solar_humidity"] = df["solar_angle"] * df["Humidity"]
+    df["wind_cos"] = np.cos(
+        np.deg2rad(df["WindDirection(Degrees)"])
+    )
 
-    df = df.drop(["ID", "Data", "Time", "TimeSunRise", "TimeSunSet"], axis=1)
-    df = df.replace([np.inf, -np.inf], np.nan).fillna(0)
+    df["temp_humidity"] = (
+        df["Temperature"] * df["Humidity"]
+    )
+
+    df["solar_temp"] = (
+        df["solar_angle"] * df["Temperature"]
+    )
+
+    drop_cols = [
+        "ID",
+        "Data",
+        "Time",
+        "TimeSunRise",
+        "TimeSunSet"
+    ]
+
+    df = df.drop(columns=drop_cols)
+
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.fillna(0)
 
     return df
 
-train = pd.read_csv("Data/train_df_1.csv")
-train = train.dropna(subset=["Radiation"])
 
-X = create_features(train.drop("Radiation", axis=1))
+X = create_features(
+    train.drop("Radiation", axis=1)
+)
+
 y = train["Radiation"]
 
-lgb = LGBMRegressor(
-    n_estimators=1200,
+X_train, X_valid, y_train, y_valid = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+
+model = LGBMRegressor(
+    n_estimators=300,
     learning_rate=0.03,
-    num_leaves=64,
-    subsample=0.85,
-    colsample_bytree=0.85,
-    reg_alpha=0.2,
-    reg_lambda=1.0,
-    random_state=42,
-    verbose=-1
+    max_depth=8,
+    num_leaves=31,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42
 )
 
-et = ExtraTreesRegressor(
-    n_estimators=500,
-    max_features=0.9,
-    min_samples_leaf=1,
-    random_state=42,
-    n_jobs=-1
+
+model.fit(X_train, y_train)
+
+
+preds = model.predict(X_valid)
+
+rmse = np.sqrt(
+    mean_squared_error(y_valid, preds)
 )
 
-model = VotingRegressor(
-    estimators=[("lgb", lgb), ("et", et)],
-    weights=[0.65, 0.35]
+print(f"Validation RMSE: {rmse:.4f}")
+
+
+joblib.dump(
+    model,
+    "solar_model.pkl",
+    compress=3
 )
 
-model.fit(X, y)
-joblib.dump(model, "solar_model.pkl")
-
-print("solar_model.pkl saved successfully.")
+print("Model saved successfully.")
