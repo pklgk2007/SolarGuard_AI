@@ -1,44 +1,41 @@
-# SolarGuard AI
+# SolarGuard AI ☀️
 
-SolarGuard AI is a solar radiation prediction and awareness web app.
+SolarGuard AI is an AI-powered web application that predicts solar radiation using Machine Learning and real-time weather data.
+
+The project was developed for the MLX Session Zero Hackathon and later extended into a complete interactive web application with live weather integration, radiation forecasting, safety recommendations, and awareness features.
+
+---
 
 ## Features
 
-- Manual input prediction
-- Live location based weather import
-- Whole-day solar radiation graph
-- Risk level classification
-- Awareness pages about harmful effects and safety tips
-- Streamlit web interface
+- Solar radiation prediction using ML
+- Real-time weather integration
+- Whole-day radiation forecasting
+- Interactive graphs and dashboard
+- Radiation risk analysis
+- Safety recommendations
+- Awareness pages about harmful solar exposure
 
-## Project Files
+---
 
-- `app.py` - main Streamlit app
-- `train_model.py` - trains and saves `solar_model.pkl`
-- `requirements.txt` - required libraries
+## Tech Stack
 
-## How to Run
+- Python
+- Streamlit
+- LightGBM
+- Scikit-learn
+- Plotly
+- Pandas & NumPy
+- Open-Meteo API
 
-Install requirements:
+---
 
-```bash
-pip install -r requirements.txt
-```
+## Live Demo
 
-Train model:
+[Add Deployment Link Here]
 
-```bash
-python train_model.py
-```
+---
 
-Run app:
+## GitHub Repository
 
-```bash
-streamlit run app.py
-```
-
-## Important
-
-Place `train_df_1.csv` in the project folder before running `train_model.py`.
-
-If `solar_model.pkl` is missing, the app will still run using a demo formula, but real ML prediction needs the trained model.
+[Add GitHub Repo Link Here]
